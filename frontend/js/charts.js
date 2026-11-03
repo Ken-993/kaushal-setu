@@ -10,6 +10,22 @@ const PRETTY = {
 };
 export const pretty = (k) => PRETTY[k] ?? k;
 
+// "10to15" -> "₹10–15 LPA" (lakhs per annum)
+export const fmtBand = (b) => {
+  const m = String(b ?? "").match(/^(\d+)to(\d+)$/);
+  return m ? `₹${m[1]}–${m[2]} LPA` : String(b ?? "–");
+};
+// Leave job-title words ("data scientist") and filler ("analytics") out of skill lists shown to people.
+export const isRealSkill = (s) =>
+  !/(analyst|scientist|engineer|manager|developer|consultant|executive|architect)$/.test(s) &&
+  !["analytics", "analytical", "analysis", "research"].includes(s);
+export const cityName = (c) => String(c).replace(/\b\w/g, (x) => x.toUpperCase()).replace(/\bNcr\b/, "NCR");
+
+export const shortBand = (b) => {
+  const m = String(b ?? "").match(/^(\d+)to(\d+)$/);
+  return m ? `₹${m[1]}–${m[2]}L` : String(b ?? "–");
+};
+
 // Read the colour tokens from styles.css so charts switch with the light/dark theme.
 export function tokens() {
   const cs = getComputedStyle(document.documentElement);
@@ -17,7 +33,8 @@ export function tokens() {
   return {
     page: g("--page"), surface: g("--surface"), surface2: g("--surface-2"),
     ink: g("--ink"), ink2: g("--ink-2"), ink3: g("--ink-3"), rule: g("--rule"), grid: g("--grid"),
-    accent: g("--accent"), s1: g("--series-1"), s2: g("--series-2"), pos: g("--pos"), neg: g("--neg"), mid: g("--mid"),
+    accent: g("--series-1"), navy: g("--navy"), sand: g("--sand"),
+    ready: g("--ready"), almost: g("--almost"), stretch: g("--stretch"), s1: g("--series-1"), s2: g("--series-2"), pos: g("--pos"), neg: g("--neg"), mid: g("--mid"),
     seq: [0, 1, 2, 3, 4, 5].map((i) => g(`--seq-${i}`)),
     clusters: [1, 2, 3, 4, 5].map((i) => g(`--cl-${i}`)),
   };

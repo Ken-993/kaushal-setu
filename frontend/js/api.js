@@ -43,11 +43,15 @@ export const api = {
   stats: () => get("/api/stats"),
   models: () => get("/api/models"),
   similarity: (view) => get(`/api/similarity?view=${encodeURIComponent(view)}`),
+  profiles: () => get("/api/profiles"),
   profile: (role) => get(`/api/profiles/${encodeURIComponent(role)}`),
   compare: (a, b) => get(`/api/compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`),
   match: (scores) => post("/api/match", scores),
   success: (scores) => post("/api/predict/success", scores),
   band: (posting) => post("/api/predict/salary-band", posting),
+  fit: (skills, years, city) => post("/api/fit", { skills, years, city }),
+  fitSample: (city) => request(`/api/fit/sample?city=${encodeURIComponent(city)}`),
+  skillPicker: () => get("/api/skill-picker"),
   // file upload: sent as multipart form data, so no JSON Content-Type header here
   resume: async (file, city) => {
     const form = new FormData();

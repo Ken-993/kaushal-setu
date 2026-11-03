@@ -34,7 +34,7 @@ This README takes you from a fresh Fedora computer to a live website on the inte
 | **What it is** | A website that maps 19 data-science job profiles, measures how far apart they are, explains what drives pay and success, and matches a person's skills or resume to roles |
 | **Data** | 4 SAS CU Hackathon files: Analytics Jobs (15,841 postings), DataScience Jobs (1,602 rows), JDS Skill Traits (139 juniors), SDS Personality Traits (161 seniors) |
 | **Who it serves** | **Candidates**: role fit, skill gaps, salary band. **Companies**: what drives hikes and success internally, what the market pays for, and where the two disagree |
-| **Website tabs** | Atlas, Compare roles, Findings, Statistics, Models, Try it, Your resume, Data & cleaning |
+| **Website** | **Check my fit** (upload a resume or pick skills → a verdict for every role: Ready to apply / Almost there / Stretch goal, with missing skills and pay), **Explore roles** (role cards + a "similar roles" orbit), **Compare roles**, **Insights** (plain-language findings), **For analysts** (statistics, models, playground, role distances, data cleaning) |
 | **Runs as** | One Docker container: Python trains the models during the build, then FastAPI serves the website and the API |
 | **Hosted on** | Render, free plan |
 
@@ -42,7 +42,7 @@ This README takes you from a fresh Fedora computer to a live website on the inte
 
 1. **Bridges company data and market data.** Job-posting skills are mapped onto the company's five competencies, so internal rewards can be compared with market pay.
 2. **Measures how similar roles really are.** Four distance views (skills, competency mix, salary distribution, experience & pay) plus a blend, shown as a map, heatmap and family tree, with significance tests for every pair of roles.
-3. **Personal.** Upload a resume or move sliders to get best-fit roles, skills worth adding and an estimated salary band.
+3. **Personal.** Upload a resume (or tick your skills) and get a clear verdict for each of 19 roles, the skills to learn next, and a pay estimate in ₹ LPA.
 4. **Its numbers can be checked.** Every cleaning decision is logged; tests are chosen after checking assumptions; effect sizes, multiple-test corrections and baseline comparisons are reported.
 5. **Explainable and private.** Predictions show why; findings are written from the results; uploaded resumes are processed in memory and never stored.
 
@@ -66,7 +66,7 @@ This README takes you from a fresh Fedora computer to a live website on the inte
       │                                      (private repo)                 On every push it:
       │  ./run-local.sh                           ▲                           1. builds the Dockerfile
       ▼                                           │  git push                 2. trains the models
- Podman builds the container  ──────────────────┘                            3. runs the 14 tests
+ Podman builds the container  ──────────────────┘                            3. runs the 17 tests
  and runs it at                                                               4. starts the website at
  http://localhost:8000                                                           https://<name>.onrender.com
 ```
@@ -139,7 +139,7 @@ git config --global init.defaultBranch main
 
 **The problem:** VS Code from Flatpak runs inside a sandbox. Its built-in terminal can't see programs installed on Fedora, so `podman`, `git` and `gh` would say "command not found" there.
 
-**The fix:** make VS Code's terminal open a shell on the real system using `flatpak-spawn --host`. The project already contains this setting in `.vscode/settings.json`, so it switches on automatically when you open the folder.
+**The fix:** make VS Code's terminal open a shell on the real system using `flatpak-spawn --host` (with `script`, which gives that shell a proper terminal so `Ctrl+C` works). The project already contains this setting in `.vscode/settings.json`, so it switches on automatically when you open the folder.
 
 ### 2.1 Allow VS Code to use flatpak-spawn
 
@@ -173,7 +173,7 @@ Set it for all your projects instead:
    "terminal.integrated.profiles.linux": {
      "Fedora (host)": {
        "path": "/usr/bin/flatpak-spawn",
-       "args": ["--host", "--env=TERM=xterm-256color", "bash"]
+       "args": ["--host", "--env=TERM=xterm-256color", "script", "-qc", "bash", "/dev/null"]
      }
    },
    "terminal.integrated.defaultProfile.linux": "Fedora (host)"
@@ -224,30 +224,36 @@ In the VS Code terminal (inside the project folder):
 
 What happens:
 
-1. **First time only: about 3–5 minutes.** Podman downloads the Python base image, installs the libraries, trains the models (about a minute) and runs the 14 tests. You'll see `14 passed`.
-2. Then it prints `Uvicorn running on http://0.0.0.0:10000`.
-3. Open **<http://localhost:8000>** in your browser. The website should appear.
-4. To stop it: click into the terminal and press `Ctrl+C`.
+1. **First time only: about 3–5 minutes.** Podman downloads the Python base image, installs the libraries, trains the models (about a minute) and runs the 17 tests. You'll see `17 passed`.
+2. The site starts **in the background** and the script prints `Kaushal Setu is running: http://localhost:8000`.
+3. Open **<http://localhost:8000>** in your browser.
+4. The terminal then shows live logs. `Ctrl+C` only hides the logs; **the site keeps running**, even if you close VS Code.
 
 Next time it takes seconds, because Podman reuses everything that didn't change.
 
-> If you see `Permission denied`, run `bash run-local.sh` instead (the file lost its "executable" flag while unzipping).
-
-**What the script runs, if you want to type it yourself:**
-
-```bash
-podman build -t kaushal-setu .                       # build the container ("-t" names it, "." = this folder)
-podman run --rm -it -p 8000:10000 kaushal-setu        # run it; your port 8000 -> container port 10000
-```
-
-**Useful extras:**
+**All the commands you need:**
 
 | You want to… | Command |
 |---|---|
+| Build and start (or restart after a change) | `./run-local.sh` |
+| Stop the site | `./run-local.sh stop` |
+| Is it running? | `./run-local.sh status` |
+| See the logs again | `./run-local.sh logs` (Ctrl+C to hide) |
 | Open the interactive API docs | <http://localhost:8000/docs> |
-| See running containers | `podman ps` |
-| Stop a container left running | `podman stop kaushal-setu` |
-| Free disk space from old builds | `podman system prune` (answer `y`) |
+
+> If you see `Permission denied`, run `chmod +x run-local.sh` once (the file lost its "executable" flag while unzipping).
+
+**What the script does, if you ever type it yourself** (note the `.` at the end of the build command; it means "this folder"):
+
+```bash
+podman build -t kaushal-setu .                              # build the image
+podman rm -f kaushal-setu                                   # remove an old copy, if any
+podman run -d --name kaushal-setu -p 8000:10000 kaushal-setu   # start in the background
+podman logs -f kaushal-setu                                 # watch the logs
+podman stop kaushal-setu                                    # stop
+```
+
+Free disk space from old builds now and then with `podman system prune` (answer `y`).
 
 ---
 
@@ -338,7 +344,7 @@ Click the service → **Logs**. You'll see roughly the same steps as on your com
 ```
 Step: pip install -r requirements.txt     (1–2 min)
 == Phase 1: cleaning == … All phases finished in …s     (1–2 min)
-14 passed
+17 passed
 Kaushal Setu: artifacts loaded
 Uvicorn running on http://0.0.0.0:10000
 Your service is live
@@ -364,7 +370,8 @@ Your everyday loop:
 
 ```bash
 # 1. edit files in VS Code, then test on your computer
-./run-local.sh                       # open http://localhost:8000, check, then Ctrl+C
+./run-local.sh                       # rebuilds + restarts; open http://localhost:8000 and check
+./run-local.sh stop                  # when you're done
 
 # 2. save a snapshot and send it to GitHub
 git add .
@@ -405,13 +412,17 @@ Render notices the push and re-deploys automatically (watch **Logs** on Render).
 | `podman: command not found` in VS Code, but works in your normal terminal | The Flatpak terminal fix isn't active: see [Part 2](#part-2-make-vs-codes-terminal-work-flatpak-fix) (trust the folder, run the `flatpak override` command, reopen VS Code) |
 | `flatpak-spawn: … Portal call failed` / terminal closes immediately | Run `flatpak override --user --talk-name=org.freedesktop.Flatpak com.visualstudio.code`, then restart VS Code |
 | `./run-local.sh: Permission denied` | `chmod +x run-local.sh` once, or use `bash run-local.sh` |
-| `Error: … address already in use` / port 8000 busy | Another copy is running: `podman stop kaushal-setu`, or close the other terminal. Or edit `run-local.sh` and change `8000:10000` to `8080:10000`, then open `localhost:8080` |
+| `Error: no context directory and no Containerfile specified` | You typed `podman build -t kaushal-setu` without the final ` .` (dot). Easier: just use `./run-local.sh` |
+| Closed VS Code and the site seems gone, or `localhost:8000` doesn't load | Run `./run-local.sh status`. If it says not running, run `./run-local.sh` again. The script always removes old copies first |
+| `bash: no job control in this shell` / `cannot set terminal process group` in VS Code | The terminal profile is the old one. Use the `script -qc bash /dev/null` version from [Part 2](#part-2-make-vs-codes-terminal-work-flatpak-fix), then open a new terminal (trash-can icon, then `+`) |
+| `the container name "kaushal-setu" is already in use` | `./run-local.sh stop`, then `./run-local.sh` |
+| `Error: … address already in use` / port 8000 busy | Something else uses port 8000. Run `./run-local.sh stop`; if it still fails, edit `run-local.sh`: change `8000:10000` to `8080:10000` and `localhost:8000` to `localhost:8080` |
 | `Error: … short-name resolution` / asks which registry | Shouldn't happen (the Dockerfile uses the full image name). If it does, choose `docker.io` |
 | Build fails at `pip install` with a network error | Check your internet and retry. On university Wi-Fi with a proxy, try another network |
 | Build fails at `RUN python -m pytest` | A change broke something: scroll up to the first `FAILED` line; it names the test and the reason |
 | `podman run --rm docker.io/library/hello-world` fails with "permission" or "newuidmap" | Run `podman system migrate` once, then retry |
 | `toomanyrequests: You have reached your pull rate limit` | Docker Hub limits anonymous downloads. Wait an hour, or run `podman login docker.io` with a free Docker Hub account |
-| Website shows a red box "Cannot reach the server" | The container stopped. Check the terminal for an error and run `./run-local.sh` again |
+| Website shows a red box "Cannot reach the server" | The site isn't running: `./run-local.sh status`, then `./run-local.sh` |
 | Charts look squashed or old after a change | Hard refresh: `Ctrl+Shift+R` |
 
 ### GitHub
@@ -446,7 +457,7 @@ kaushal-setu/
 ├── Dockerfile              ← recipe for the container (used locally and by Render)
 ├── .dockerignore           ← files the container doesn't need
 ├── render.yaml             ← Render Blueprint: Docker, free plan, Singapore, health check
-├── run-local.sh            ← one command to build + run locally (Podman or Docker)
+├── run-local.sh            ← build + run locally in the background: start | stop | logs | status
 ├── requirements.txt        ← exact Python library versions
 ├── .gitignore              ← generated folders Git should ignore
 ├── .vscode/
@@ -478,9 +489,9 @@ kaushal-setu/
 │       ├── app.js          ← tabs, theme toggle, error messages
 │       ├── api.js          ← the only file that talks to the backend
 │       ├── charts.js       ← shared chart helpers + colour tokens
-│       └── pages/          ← one file per tab: atlas, compare, stats, models, tryit, resume, info
+│       └── pages/          ← fit (home), explore (orbit), compare, insights; analysts: stats, models, tryit, atlas, info
 ├── samples/                ← a fictional resume (.txt/.docx/.pdf) to test the upload
-└── tests/test_api.py       ← 14 automated checks (run in every build)
+└── tests/test_api.py       ← 17 automated checks (run in every build)
 ```
 
 Generated inside the container during the build (not in Git): `data/clean/` (cleaned data + cleaning report) and `artifacts/` (results JSON + the three trained `.joblib` models).
@@ -493,7 +504,7 @@ Generated inside the container during the build (not in Git): `data/clean/` (cle
 | 2 | `pip install -r requirements.txt` | `requirements.txt` changes |
 | 3 | Copy data + pipeline, run `python run_all.py` (phases 1–5, about 1 min) | Data or pipeline code changes |
 | 4 | Copy backend, frontend, tests, samples | Those files change |
-| 5 | `pytest`: 14 tests; a failure stops the build | Any of the above changes |
+| 5 | `pytest`: 17 tests; a failure stops the build | Any of the above changes |
 | 6 | Start `uvicorn` on `$PORT` (Render sets 10000) | Every container start |
 
 Training inside the build guarantees the models are always made with exactly the library versions that later load them. That avoids a whole class of "model file won't load" errors.
@@ -535,7 +546,10 @@ Every candidate is compared with a baseline that always guesses the most common 
 | POST | `/api/predict/success` | P(high success) + contribution of each trait | Try it |
 | POST | `/api/predict/salary-band` | Probability of each salary band | Try it, Your resume |
 | POST | `/api/match` | Data roles ranked by fit to your skill pattern + hike prediction | Try it |
-| POST | `/api/resume` | Upload (.pdf/.docx/.txt, max 5 MB): skills, experience, role ranking, skills to add, salary band | Your resume |
+| POST | `/api/resume` | Upload (.pdf/.docx/.txt, max 5 MB): skills, experience and a fit verdict for every role | Check my fit |
+| POST | `/api/fit` | Same fit result from a list of skills + years (no resume) | Check my fit |
+| GET | `/api/fit/sample` | Fit result for the bundled sample resume | Check my fit |
+| GET | `/api/skill-picker` | Popular skills grouped into areas, for the skill picker | Check my fit |
 
 Try any of them at `/docs` on your local or Render address.
 
@@ -577,11 +591,11 @@ Limits: keyword matching, not reading comprehension. Unusual wording can be miss
 | Custom model | **Frank & Hall ordinal classifier** | Salary-band prediction that respects band order |
 | Similarity | SciPy + NumPy | Cosine, Euclidean, Jensen–Shannon distances; classical MDS; hierarchical clustering; permutation tests |
 | Model storage | **joblib** | Saving and loading trained models |
-| Backend | **FastAPI**, **Uvicorn**, **Pydantic**, **python-multipart** | 14 REST endpoints, validation, file upload, gzip compression, `/docs` |
+| Backend | **FastAPI**, **Uvicorn**, **Pydantic**, **python-multipart** | 17 REST endpoints, validation, file upload, gzip compression, `/docs` |
 | Resume reading | **pypdf**, **python-docx** | Text from PDF and Word files |
 | Frontend | **HTML5, CSS3, vanilla JavaScript (ES modules)** | 8-tab single-page app, light/dark theme, mobile layout; no framework, no build step |
 | Charts | **Plotly.js 4.1.2** (jsDelivr CDN, bundled fallback) | Maps, heatmaps, dendrograms, forest plots, ROC curves, bar and dumbbell charts |
-| Testing | **pytest**, FastAPI TestClient, httpx | 14 tests, run in every build |
+| Testing | **pytest**, FastAPI TestClient, httpx | 17 tests, run in every build |
 | Containers | **Docker** format; **Podman** locally on Fedora | Same container on laptop and server |
 | Code hosting | **Git**, **GitHub** (private repo), **GitHub CLI** (`gh`) | Version control; source for Render |
 | Hosting | **Render** (free web service, Docker runtime, Blueprint `render.yaml`) | Public website with auto-deploy on every push |
@@ -600,13 +614,13 @@ Limits: keyword matching, not reading comprehension. Unusual wording can be miss
 | Area | Status |
 |---|---|
 | Data cleaning, statistics, ML models, job-profile similarity, findings (phases 1–5) | Complete |
-| Backend API (14 endpoints) and website (8 tabs, light/dark, mobile) | Complete |
+| Backend API (17 endpoints) and website (5 sections, navy + beige, light/dark, mobile) | Complete |
 | Resume upload (PDF/DOCX/TXT) with role fit, skills to add, salary band | Complete |
 | Containerised: Dockerfile with pinned libraries, training and tests in the build | Complete, built and tested |
 | Tested under Render free-plan limits (512 MB, 0.1 CPU) | Starts in about 20 s; uses about 115 MB RAM; all endpoints respond |
 | Render Blueprint (`render.yaml`), health check, `$PORT` binding, gzip, CDN for charts | Complete |
 | Fedora + Flatpak VS Code setup (host terminal profile, Podman script) | Complete |
-| Automated tests | 14/14 passing in every build |
+| Automated tests | 17/17 passing in every build |
 | Live deployment on Render | **Your step:** follow Parts 5 and 6 |
 
 ### Planned next

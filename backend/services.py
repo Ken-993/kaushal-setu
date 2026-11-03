@@ -177,16 +177,29 @@ def predict_success(values: dict) -> dict:
     return _binary_predict("sds", values, SDS_FEATURES)
 
 
-def predict_band(exp_min: float, exp_max: float, skills: list[str], job_title: str, city: str) -> dict:
-    s = store()
-    bundle = s["band_model"]
+def _band_row(exp_min: float, exp_max: float, tokens: list[str], job_title: str, city: str) -> dict:
     exp_max = max(exp_max, exp_min)
-    tokens = [t.strip().lower() for t in skills if t.strip()]
     row = {"exp_min": exp_min, "exp_max": exp_max, "exp_span": exp_max - exp_min,
            "skill_tokens": "|".join(tokens), "job_desig": job_title.lower(),
            "city_primary": city.strip().lower() or "unknown"}
     for col, fam in zip(FAMILY_COLS, ["big_data", "maths_stats", "coding", "ai_ml", "dashboards"]):
         row[col] = int(_match_family(tokens, TAXONOMY[fam]))
+    return row
+
+
+def predict_bands_for_titles(exp_min: float, exp_max: float, skills: list[str], titles: list[str], city: str) -> list[str]:
+    """Most likely pay band for the same person under several job titles, in ONE model call (fast)."""
+    bundle = store()["band_model"]
+    tokens = [t.strip().lower() for t in skills if t.strip()]
+    X = pd.DataFrame([_band_row(exp_min, exp_max, tokens, t, city) for t in titles])
+    return [bundle["bands"][int(i)] for i in np.argmax(bundle["model"].predict_proba(X), axis=1)]
+
+
+def predict_band(exp_min: float, exp_max: float, skills: list[str], job_title: str, city: str) -> dict:
+    s = store()
+    bundle = s["band_model"]
+    tokens = [t.strip().lower() for t in skills if t.strip()]
+    row = _band_row(exp_min, exp_max, tokens, job_title, city)
     X = pd.DataFrame([row])
     probs = bundle["model"].predict_proba(X)[0]
     bands = bundle["bands"]
@@ -242,16 +255,109 @@ def match_roles(values: dict) -> dict:
             "method": match_roles.__doc__.strip()}
 
 
+# ------------------------------------------------------------------- job-role fit
+# Skills that mean the same thing in postings: having one counts as having the others.
+SYNONYMS = [{"data analysis", "data analytics"}, {"quality analysis", "quality assurance", "qa"},
+            {"recruitment", "hiring", "talent acquisition"}, {"hr", "human resources"},
+            {"business analysis", "business analytics"}, {"product management", "product manager"}]
+# Skills that imply another one ("advanced excel" means you know excel).
+IMPLIES = {"advanced excel": ["excel"], "deep learning": ["machine learning"], "pyspark": ["spark", "python"],
+           "nlp": ["machine learning"], "tableau": ["data visualization"], "power bi": ["data visualization"],
+           "mysql": ["sql"], "postgresql": ["sql"], "pl/sql": ["sql"], "t-sql": ["sql"], "core java": ["java"]}
+TITLE_RX = re.compile(r"(analyst|scientist|engineer|manager|developer|consultant|executive|architect)$")
+VERDICTS = [("stretch", "Stretch goal"), ("almost", "Almost there"), ("ready", "Ready to apply")]
+
+
+def _expand(skills) -> set[str]:
+    found = {t.strip().lower() for t in skills if t and t.strip()}
+    for t in list(found):
+        found.update(IMPLIES.get(t, []))
+    for group in SYNONYMS:
+        if found & group:
+            found |= group
+    return found
+
+
+@lru_cache(maxsize=None)
+def _key_skills(i: int) -> tuple:
+    """The 10 skills employers ask for most in role i (generic words and job titles left out)."""
+    from backend.resume import IGNORE
+    p = store()["profiles"]
+    prev = np.array(p["skill_prevalence"][i])
+    out = []
+    for j in np.argsort(-prev):
+        t = p["skill_vocab"][j]
+        if prev[j] < 0.03 or len(out) == 10:
+            break
+        if t in IGNORE or TITLE_RX.search(t):
+            continue
+        out.append((t, float(prev[j])))
+    return tuple(out)
+
+
+PICKER_GROUPS = {
+    "Programming & databases": ["python", "r", "sql", "java", "scala", "c++", "javascript", "mysql", "nosql", "linux", "git"],
+    "Maths & statistics": ["statistics", "regression", "logistic regression", "forecasting", "predictive analytics",
+                           "predictive modeling", "sas", "spss", "time series", "data mining", "statistical modeling"],
+    "AI & machine learning": ["machine learning", "deep learning", "nlp", "computer vision", "tensorflow",
+                              "artificial intelligence", "data science", "neural networks"],
+    "Big data & engineering": ["big data", "hadoop", "spark", "hive", "kafka", "etl", "data warehousing", "aws", "azure"],
+    "Dashboards & reporting": ["tableau", "power bi", "excel", "advanced excel", "data visualization", "mis",
+                               "mis reporting", "business intelligence", "qlikview"],
+    "Business & analysis": ["data analysis", "business analysis", "requirement gathering", "project management",
+                            "market research", "risk management", "credit risk", "finance", "agile", "consulting"],
+}
+
+
+def skill_picker() -> list[dict]:
+    """Popular skills for the 'pick your skills' form, grouped into plain-language areas.
+    Only skills the models know (present in the job-posting vocabulary) are offered."""
+    s = store()
+    vocab = set(s["models"]["band"]["skill_vocabulary"]) | set(s["profiles"]["skill_vocab"])
+    return [{"group": g, "skills": [t for t in ts if t in vocab]} for g, ts in PICKER_GROUPS.items()]
+
+
+def assess_fit(skills: list[str], years: float, city: str = "bengaluru") -> dict:
+    """How ready is someone with these skills and years of experience for each of the 19 roles?
+
+    match %     : of the 10 skills employers ask for most in a role, how much you cover, weighted by how
+                  often each skill appears in that role's postings (common skills count for more)
+    experience  : compared with the median minimum experience that role's postings ask for
+    verdict     : Ready to apply (match >= 50%), Almost there (>= 25%), Stretch goal (below);
+                  one level lower when you are more than 2 years short of the usual experience
+    pay         : the salary-band model, using your skills and years with this role as the job title
+    """
+    s = store()
+    p = s["profiles"]
+    years = max(0.0, float(years))
+    found = _expand(skills)
+    rows = []
+    pay = predict_bands_for_titles(years, years + 3, list(found), [x["role"] for x in p["profiles"]], city)
+    for i, prof in enumerate(p["profiles"]):
+        keys = _key_skills(i)
+        total = sum(w for _, w in keys) or 1.0
+        have = [t for t, _ in keys if t in found]
+        missing = [t for t, _ in keys if t not in found]
+        match = sum(w for t, w in keys if t in found) / total
+        need = float(prof["exp_min_median"])
+        exp = "meets" if years >= need else ("close" if years >= need - 2 else "short")
+        level = 2 if match >= 0.50 else (1 if match >= 0.25 else 0)
+        if exp == "short":
+            level = max(0, level - 1)
+        rows.append({"role": prof["role"], "group": prof["group"], "match": round(match, 3),
+                     "verdict": VERDICTS[level][0], "verdict_label": VERDICTS[level][1], "level": level,
+                     "have": have, "missing": missing, "key_skills": [t for t, _ in keys],
+                     "experience": {"status": exp, "usual_min_years": need, "your_years": years},
+                     "typical_band": prof["band_median"], "your_band": pay[i], "postings": prof["n"]})
+    rows.sort(key=lambda r: (-r["level"], -r["match"]))
+    counts = {v: sum(r["verdict"] == v for r in rows) for v, _ in VERDICTS}
+    return {"roles": rows, "counts": counts, "skills": sorted({t.strip().lower() for t in skills if t.strip()}),
+            "years": years, "city": city, "method": assess_fit.__doc__.strip()}
+
+
 # ------------------------------------------------------------------------ resume
 def analyse_resume(filename: str, content: bytes, city: str = "bengaluru") -> dict:
-    """Read a resume, find its skills and experience, then rank roles and estimate a salary band.
-
-    role similarity : cosine between the resume's skill vector (1 = skill present) and each role's
-                      skill-prevalence vector - the same skill space as the Atlas 'Skill overlap' view
-    skills to add   : skills listed by at least 8% of the role's postings that the resume does not mention
-    salary band     : the band model, with the detected skills, years of experience, the best-fitting
-                      data role as the job title, and the chosen city
-    """
+    """Read a resume (in memory only), find its skills and experience, then assess fit for every role."""
     from backend import resume as rp
 
     text = rp.extract_text(filename, content)
@@ -264,32 +370,15 @@ def analyse_resume(filename: str, content: bytes, city: str = "bengaluru") -> di
     vocab = sorted(set(s["models"]["band"]["skill_vocabulary"]) | set(p["skill_vocab"]))
     skills = rp.find_skills(text, vocab)
     years = rp.find_years(text)
-    fams = p["families"]
-    detected = [f for f in fams if _match_family(skills, TAXONOMY[f])]
-
-    found = set(skills)
-    v = np.array([1.0 if t in found else 0.0 for t in p["skill_vocab"]])
-    ranking = []
-    for i, prof in enumerate(p["profiles"]):
-        prev = np.array(p["skill_prevalence"][i])
-        denom = np.linalg.norm(v) * np.linalg.norm(prev)
-        sim = float(v @ prev / denom) if denom else 0.0
-        top = [t["skill"] for t in prof["top_skills"]]
-        missing = [p["skill_vocab"][j] for j in np.argsort(-prev)
-                   if prev[j] >= 0.08 and p["skill_vocab"][j] not in found
-                   and p["skill_vocab"][j] not in rp.IGNORE
-                   and not re.search(r"(analyst|scientist|engineer|manager|developer)$", p["skill_vocab"][j])][:6]
-        ranking.append({"role": prof["role"], "group": prof["group"], "similarity": round(sim, 3),
-                        "matched_top_skills": [t for t in top if t in found],
-                        "skills_to_add": missing, "band_median": prof["band_median"]})
-    ranking.sort(key=lambda r: -r["similarity"])
-    best_data = next(r["role"] for r in ranking if r["group"] == "data")
+    fit = assess_fit(skills, years["years"], city)
+    best_data = next(r["role"] for r in fit["roles"] if r["group"] == "data")
     band = predict_band(years["years"], years["years"] + 3, skills, best_data, city)
-    return {"file": filename, "words": words, "skills": skills,
-            "skills_known_to_roles": [t for t in skills if t in set(p["skill_vocab"])],
-            "experience": years, "families_detected": detected,
-            "family_labels": p["family_labels"], "ranking": ranking, "best_data_role": best_data,
-            "salary_band": band, "city": city,
-            "note": ("Keyword matching: skills are found only when written the way job postings write them. "
-                     "The file was read in memory and not saved."),
-            "method": analyse_resume.__doc__.strip()}
+    return {**fit, "file": filename, "words": words, "experience": years,
+            "best_data_role": best_data, "salary_band": band,
+            "families_detected": [f for f in p["families"] if _match_family(skills, TAXONOMY[f])],
+            "note": "Skills are found by matching the words job postings use. The file was read in memory and not saved."}
+
+
+def sample_resume(city: str = "bengaluru") -> dict:
+    path = ART.parent / "samples" / "sample_resume.pdf"
+    return analyse_resume("sample_resume.pdf", path.read_bytes(), city)

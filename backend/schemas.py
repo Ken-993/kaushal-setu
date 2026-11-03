@@ -33,3 +33,10 @@ class JobPosting(BaseModel):
                               examples=[["python", "sql", "machine learning"]])
     job_title: str = Field("", max_length=200, examples=["Data Scientist"])
     city: str = Field("bengaluru", max_length=60, examples=["bengaluru"])
+
+
+class SkillProfile(BaseModel):
+    """A person's skills and experience, entered by hand instead of uploading a resume."""
+    skills: list[str] = Field(..., min_length=1, max_length=200, examples=[["python", "sql", "excel", "tableau"]])
+    years: float = Field(0, ge=0, le=45, description="years of work experience", examples=[2])
+    city: str = Field("bengaluru", max_length=60, examples=["pune"])

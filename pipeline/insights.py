@@ -23,6 +23,61 @@ def _fmt_p(p: float) -> str:
     return "p < 0.001" if p < 0.001 else f"p = {p:.3f}"
 
 
+def _lpa(band: str) -> str:
+    lo, hi = band.split("to")
+    return f"₹{lo}–{hi} LPA"
+
+
+def _plain(s: dict, m: dict, pr: dict) -> list[str]:
+    """The same eight findings in everyday language (shown first on the website)."""
+    jds = sorted(s["jds"], key=lambda r: -r["cohens_d"])
+    strong = [PRETTY[r["feature"]] for r in jds if r["significant"]]
+    weak = [PRETTY[r["feature"]] for r in jds if not r["significant"]]
+    auc = next(c["auc"] for c in m["jds"]["comparison"] if c["model"] == m["jds"]["chosen"])
+    eb = {r["band"]: r["mean"] for r in s["market"]["experience_by_band"]}
+    exp_only = next(c for c in m["band"]["comparison"] if c["model"].startswith("experience"))["within_one_band"]
+    full = next(c for c in m["band"]["comparison"] if c["model"] == m["band"]["chosen"])["within_one_band"]
+    fam = sorted(s["market"]["family_vs_band"], key=lambda r: -r["band_diff"])
+    paying = [PRETTY[r["family"]] for r in fam if r["band_diff"] > 0.5]
+    flat = [PRETTY[r["family"]] for r in fam if r["band_diff"] <= 0]
+    al = s["alignment"]["table"]
+    int_top = max(al, key=lambda r: r["internal_d"])
+    mkt_top = max(al, key=lambda r: r["market_band_diff"])
+    D = pr["views"]["skills"]["matrix"]
+    mx = max(max(r) for r in D)
+    roles = pr["roles"]
+    pairs = sorted(pr["pairs"], key=lambda p: p["skill_cosine_distance"])
+    close = pairs[0]
+    alike = round(100 * (1 - D[roles.index(close["a"])][roles.index(close["b"])] / mx))
+    data_roles = {p["role"] for p in pr["profiles"] if p["group"] == "data"}
+    far = [p for p in pairs if p["a"] in data_roles and p["b"] in data_roles][-1]
+    by_band = sorted(pr["profiles"], key=lambda p: -p["band_mean"])
+    sen = s["dsjobs"]["mean_salary_by_seniority"]
+    return [
+        (f"Juniors who got a high salary hike were clearly stronger at {', '.join(strong)}. "
+         + (f"{', '.join(weak).capitalize()} made no real difference. " if weak else "")
+         + f"Using just these five scores, the model tells high-hike and low-hike juniors apart correctly about {round(auc * 100)}% of the time."),
+        ("Highly successful senior data scientists stand out most for being organised and dependable (conscientiousness) "
+         "and curious and open to new ideas (openness). Being more anxious or calm (neuroticism) made no difference on its own."),
+        (f"Experience matters most for pay. Postings in the ₹25–50 LPA range ask for about {eb[5]:.0f} years on average, "
+         f"while ₹0–3 LPA postings ask for about {eb[0]:.0f}. From the years asked for alone, the model gets the pay range right "
+         f"(or one step off) {exp_only:.0%} of the time; adding skills, job title and city lifts that to {full:.0%}."),
+        (f"Jobs asking for {', '.join(paying)} pay noticeably more, roughly three-quarters of a pay range higher. "
+         + (f"{', '.join(flat).capitalize()} don't pay extra. " if flat else "")
+         + "The extra pay for big-data skills is biggest for freshers and fades away after about five years of experience."),
+        (f"The company in this data rewards {PRETTY[int_top['family']]} most when giving salary hikes, but the job market pays "
+         f"nothing extra for it. {PRETTY[mkt_top['family']]} earns the biggest premium in the market. "
+         "In short, what this company rewards and what the market pays for don't line up."),
+        (f"{close['a']} and {close['b']} are {alike}% alike in the skills employers ask for: almost the same job. "
+         f"Among data roles, {far['a']} and {far['b']} are the most different."),
+        (f"{by_band[0]['role']} and {by_band[1]['role']} pay the most, usually {_lpa(by_band[0]['band_median'])}. "
+         f"{by_band[-1]['role']} pays the least, usually {_lpa(by_band[-1]['band_median'])}. "
+         f"Job titles with 'Senior' advertise about ₹{sen['senior']:.0f} LPA on average, against ₹{sen['standard']:.0f} LPA for the rest."),
+        ("The job ads in the data are cut short, so the skill counts are on the low side. The salary-hike and success findings "
+         "come from one company's staff (about 150 people each), so they describe that company, not everyone."),
+    ]
+
+
 def run() -> list[dict]:
     print("== Phase 5: insights ==")
     s = json.loads((ART / "stats.json").read_text())
@@ -127,6 +182,8 @@ def run() -> list[dict]:
                          "effects describe this company, not data scientists in general."),
                 "evidence": "Phase 1 cleaning report"})
 
+    for item, text in zip(out, _plain(s, m, pr)):
+        item["plain"] = text
     (ART / "insights.json").write_text(json.dumps(out, indent=2))
     for i in out:
         print(f"  - {i['title']}")

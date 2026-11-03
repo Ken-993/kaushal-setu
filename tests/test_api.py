@@ -113,3 +113,32 @@ def test_resume_rejects_bad_files():
     assert _upload("cv.doc", b"old word file").status_code == 422
     assert _upload("cv.txt", b"too short").status_code == 422
     assert _upload("cv.pdf", b"not really a pdf").status_code == 422
+
+
+# ------------------------------------------------------------------ job-role fit
+def test_fit_by_hand_and_verdicts():
+    d = client.post("/api/fit", json={"skills": ["python", "sql", "excel", "data analysis", "tableau"],
+                                      "years": 4, "city": "pune"}).json()
+    roles = d["roles"]
+    assert len(roles) == 19 and all(0 <= r["match"] <= 1 for r in roles)
+    assert {r["verdict"] for r in roles} <= {"ready", "almost", "stretch"}
+    levels = [r["level"] for r in roles]
+    assert levels == sorted(levels, reverse=True)
+    da = next(r for r in roles if r["role"] == "Data Analyst")
+    assert "sql" in da["have"] and da["verdict"] in {"ready", "almost"}
+
+
+def test_more_skills_never_lower_the_match():
+    base = {"skills": ["python"], "years": 3}
+    more = {"skills": ["python", "machine learning", "deep learning", "nlp"], "years": 3}
+    m1 = {r["role"]: r["match"] for r in client.post("/api/fit", json=base).json()["roles"]}
+    m2 = {r["role"]: r["match"] for r in client.post("/api/fit", json=more).json()["roles"]}
+    assert all(m2[k] >= m1[k] for k in m1)
+
+
+def test_fit_sample_and_picker():
+    d = client.get("/api/fit/sample").json()
+    assert d["counts"]["ready"] >= 1 and d["experience"]["years"] == 3
+    groups = client.get("/api/skill-picker").json()
+    assert len(groups) >= 5 and all(g["skills"] for g in groups)
+    assert client.post("/api/fit", json={"skills": [], "years": 1}).status_code == 422

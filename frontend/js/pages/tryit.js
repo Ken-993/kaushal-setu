@@ -1,6 +1,6 @@
 // tryit.js - live predictions: sliders -> POST to the API -> charts update.
 import { api } from "../api.js";
-import { divergingBars, esc, pct, plot, pretty, table, tokens } from "../charts.js";
+import { divergingBars, esc, fmtBand, pct, plot, pretty, shortBand, table, tokens } from "../charts.js";
 
 let opts, lastMatch, lastSds, lastBand;
 const skills = new Set(["python", "sql", "machine learning"]);
@@ -107,11 +107,11 @@ function drawJds() {
     type: "bar", orientation: "h", y: r.map((x) => x.role), x: r.map((x) => x.similarity),
     marker: { color: r.map((x) => (x.similarity >= 0 ? t.pos : t.neg)) },
     customdata: r.map((x) => [x.coverage_pct, x.band_median]),
-    hovertemplate: "%{y}<br>pattern match %{x:+.2f}<br>coverage %{customdata[0]}%<br>typical band %{customdata[1]} L<extra></extra>",
+    hovertemplate: "%{y}<br>pattern match %{x:+.2f}<br>coverage %{customdata[0]}%<extra></extra>",
   }], { xaxis: { title: { text: "pattern match (−1 opposite, +1 same shape)" }, range: [-1, 1], zeroline: true, zerolinecolor: t.ink3 },
         yaxis: { autorange: "reversed", gridcolor: "rgba(0,0,0,0)" } });
 
-  const top = r.slice(0, 3).map((x) => [esc(x.role), x.similarity.toFixed(2), `${x.coverage_pct}%`, `${esc(x.band_median)} L`,
+  const top = r.slice(0, 3).map((x) => [esc(x.role), x.similarity.toFixed(2), `${x.coverage_pct}%`, fmtBand(x.band_median),
     x.skills_to_build.length ? x.skills_to_build.map((g) => esc(g.label)).join(", ") : "nothing major"]);
   document.getElementById("match-gaps").innerHTML = (lastMatch.flat_profile
     ? `<p class="hint">Your scores are evenly balanced, so roles are ranked by coverage only.</p>` : "") +
@@ -130,10 +130,10 @@ function drawSds() {
 function drawBand() {
   if (!lastBand) return;
   const t = tokens();
-  document.getElementById("band-pred").textContent = `${lastBand.predicted_band} L`;
+  document.getElementById("band-pred").textContent = fmtBand(lastBand.predicted_band);
   const p = lastBand.probabilities;
   plot("band-chart", [{
-    type: "bar", x: p.map((x) => x.band), y: p.map((x) => x.probability), marker: { color: t.s1 },
+    type: "bar", x: p.map((x) => shortBand(x.band)), y: p.map((x) => x.probability), marker: { color: t.s1 },
     hovertemplate: "%{x} lakhs: %{y:.1%}<extra></extra>",
   }], { yaxis: { tickformat: ".0%", rangemode: "tozero" }, xaxis: { title: { text: "salary band (lakhs per year)" }, gridcolor: "rgba(0,0,0,0)" } });
   const fam = lastBand.families_detected.map(pretty).join(", ") || "none";

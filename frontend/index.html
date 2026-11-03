@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kaushal Setu</title>
-  <meta name="description" content="How data-science job profiles relate: skills, pay, experience, and what drives success.">
+  <meta name="description" content="Upload your resume and see which data and tech jobs you are ready for, what you are missing, and what they pay.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Archivo:wght@400..700&display=swap">
   <link rel="stylesheet" href="css/styles.css">
   <!-- Plotly (charts) from a public CDN to save the server's bandwidth; the bundled copy is the fallback -->
   <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@4.1.2/plotly.min.js"></script>
@@ -15,20 +15,17 @@
 <body>
   <a class="skip" href="#main">Skip to content</a>
 
-  <header class="masthead">
-    <div class="brand">
-      <h1>Kaushal Setu</h1>
-      <p>Data-science jobs, skills and traits, mapped by how alike they are.</p>
-    </div>
-    <nav class="tabs" aria-label="Sections">
-      <button class="tab" data-tab="atlas" aria-current="page">Atlas</button>
-      <button class="tab" data-tab="compare">Compare roles</button>
-      <button class="tab" data-tab="findings">Findings</button>
-      <button class="tab" data-tab="stats">Statistics</button>
-      <button class="tab" data-tab="models">Models</button>
-      <button class="tab" data-tab="tryit">Try it</button>
-      <button class="tab" data-tab="resume">Your resume</button>
-      <button class="tab" data-tab="data">Data & cleaning</button>
+  <header class="topbar">
+    <a class="brand" href="#fit" data-go="fit">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Kaushal Setu</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <button class="nav-link" data-tab="fit">Check my fit</button>
+      <button class="nav-link" data-tab="explore">Explore roles</button>
+      <button class="nav-link" data-tab="compare">Compare roles</button>
+      <button class="nav-link" data-tab="insights">Insights</button>
+      <button class="nav-link subtle" data-tab="research">For analysts</button>
     </nav>
     <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch colour theme">Dark</button>
   </header>
@@ -36,245 +33,339 @@
   <div id="status" class="status" role="status" hidden></div>
 
   <main id="main">
-    <!-- ======================================================= ATLAS -->
-    <section class="page" id="page-atlas">
-      <div class="atlas-head">
-        <div>
-          <h2>How far apart are the job profiles?</h2>
-          <p class="lede">Each dot is a role built from thousands of postings. Roles that sit close together ask for similar things.
-            Choose what “similar” means, then select a role to see its nearest neighbours.</p>
-        </div>
-        <div class="segmented" id="view-switch" role="radiogroup" aria-label="Distance view"></div>
-      </div>
-      <p class="view-note" id="view-note"></p>
-
-      <div class="atlas-grid">
-        <figure class="panel map-panel">
-          <div id="atlas-map" class="chart chart-map"></div>
-          <figcaption id="map-caption"></figcaption>
-        </figure>
-        <aside class="panel role-panel" id="role-panel" aria-live="polite">
-          <p class="empty">Select a role on the map to see its profile.</p>
-        </aside>
-      </div>
-
-      <div class="two-col">
-        <figure class="panel">
-          <h3>Distance between every pair of roles</h3>
-          <p class="hint">Darker means closer. Rows follow the clustering. Select a square to compare those two roles.</p>
-          <div id="atlas-heatmap" class="chart chart-heat"></div>
-        </figure>
-        <figure class="panel">
-          <h3>Family tree of roles</h3>
-          <p class="hint">Roles that join lower down are more alike. Colours mark the five clusters.</p>
-          <div id="atlas-dendro" class="chart chart-heat"></div>
-        </figure>
-      </div>
-    </section>
-
-    <!-- ===================================================== COMPARE -->
-    <section class="page" id="page-compare" hidden>
-      <h2>Compare two roles</h2>
-      <div class="pickers">
-        <label>First role <select id="cmp-a"></select></label>
-        <button type="button" class="ghost" id="cmp-swap" aria-label="Swap the two roles">Swap</button>
-        <label>Second role <select id="cmp-b"></select></label>
-      </div>
-      <div id="cmp-distances" class="distance-strip"></div>
-      <div class="two-col">
-        <figure class="panel"><h3>Competencies asked for</h3>
-          <p class="hint">Share of postings that mention each competency family.</p>
-          <div id="cmp-fam" class="chart"></div></figure>
-        <figure class="panel"><h3>Salary bands offered</h3>
-          <p class="hint">Share of postings in each band (lakhs per year).</p>
-          <div id="cmp-band" class="chart"></div></figure>
-      </div>
-      <div class="two-col">
-        <figure class="panel"><h3>Top skills, side by side</h3>
-          <p class="hint">Share of postings that list the skill. The line shows the gap.</p>
-          <div id="cmp-skills" class="chart chart-tall"></div></figure>
-        <div class="panel" id="cmp-tests"></div>
-      </div>
-    </section>
-
-    <!-- ==================================================== FINDINGS -->
-    <section class="page" id="page-findings" hidden>
-      <h2>What the data says</h2>
-      <p class="lede">Every sentence below is generated from the analysis results, so it updates when the pipeline is re-run.</p>
-      <ol class="findings" id="findings"></ol>
-    </section>
-
-    <!-- ======================================================= STATS -->
-    <section class="page" id="page-stats" hidden>
-      <h2>Statistical tests</h2>
-      <p class="lede">High vs low groups compared feature by feature. Effect size is Cohen’s d with a 95% interval;
-        filled dots stay significant after Holm correction.</p>
-      <div class="two-col">
-        <figure class="panel"><h3>Junior skills and salary hike</h3><div id="st-jds" class="chart"></div></figure>
-        <figure class="panel"><h3>Senior personality and success</h3><div id="st-sds" class="chart"></div></figure>
-      </div>
-      <div class="two-col">
-        <figure class="panel"><h3>Pay premium by competency</h3>
-          <p class="hint">Average salary-band difference between postings with and without the competency.</p>
-          <div id="st-fam" class="chart"></div></figure>
-        <figure class="panel"><h3>Experience by salary band</h3>
-          <p class="hint">Mean minimum experience asked for in each band.</p>
-          <div id="st-exp" class="chart"></div></figure>
-      </div>
-      <div class="two-col">
-        <figure class="panel"><h3>Big-data premium by experience level</h3>
-          <p class="hint">The premium is large for juniors and disappears for experienced hires.</p>
-          <div id="st-bigdata" class="chart"></div></figure>
-        <figure class="panel"><h3>Company reward vs market premium</h3>
-          <p class="hint" id="st-align-note"></p>
-          <div id="st-align" class="chart"></div></figure>
-      </div>
-      <figure class="panel"><h3>Skills with the largest pay difference</h3>
-        <p class="hint">Skills listed in at least 150 postings; band difference with vs without the skill.</p>
-        <div id="st-skills" class="chart chart-tall"></div></figure>
-    </section>
-
-    <!-- ====================================================== MODELS -->
-    <section class="page" id="page-models" hidden>
-      <h2>Predictive models</h2>
-      <p class="lede">Each model was compared against a baseline that always guesses the most common answer.
-        Small samples use 5-fold cross-validation repeated 10 times.</p>
-      <div class="two-col">
-        <div class="panel"><h3>Salary hike from junior skills</h3><div id="md-jds-table"></div></div>
-        <div class="panel"><h3>Success from senior personality</h3><div id="md-sds-table"></div></div>
-      </div>
-      <div class="two-col">
-        <figure class="panel"><h3>ROC curves (out-of-fold)</h3>
-          <p class="hint">Closer to the top-left corner is better. The diagonal is guessing.</p>
-          <div id="md-roc" class="chart"></div></figure>
-        <figure class="panel"><h3>What each score does to the odds</h3>
-          <p class="hint">Standardised logistic coefficients with bootstrap 95% intervals.</p>
-          <div id="md-coef" class="chart"></div></figure>
-      </div>
-      <div class="two-col">
-        <div class="panel"><h3>Salary band from a job posting</h3><div id="md-band-table"></div></div>
-        <figure class="panel"><h3>Test-set confusion matrix</h3>
-          <p class="hint">Rows are the true band, columns the predicted band.</p>
-          <div id="md-cm" class="chart"></div></figure>
-      </div>
-      <figure class="panel"><h3>Words and skills that move the band</h3>
-        <div class="segmented small" id="md-term-switch" role="radiogroup" aria-label="Term type"></div>
-        <div id="md-terms" class="chart chart-tall"></div></figure>
-    </section>
-
-    <!-- ======================================================= TRY IT -->
-    <section class="page" id="page-tryit" hidden>
-      <h2>Try the models</h2>
-      <div class="try-grid">
-        <div class="panel">
-          <h3>Junior data scientist</h3>
-          <p class="hint">Set the five skill scores (1–5).</p>
-          <form id="form-jds" class="sliders"></form>
-        </div>
-        <div class="panel result">
-          <div class="hero-prob"><span id="jds-prob">–</span><small>chance of a high salary hike</small></div>
-          <div id="jds-contrib" class="chart chart-short"></div>
-          <p class="hint" id="jds-note"></p>
-        </div>
-      </div>
-      <figure class="panel">
-        <h3>Roles that fit this skill pattern</h3>
-        <p class="hint" id="match-note">Pattern match compares your relative strengths with what each role emphasises; coverage is how much of the role’s demand your levels meet.</p>
-        <div id="match-chart" class="chart"></div>
-        <div id="match-gaps"></div>
-      </figure>
-
-      <div class="try-grid">
-        <div class="panel">
-          <h3>Senior data scientist</h3>
-          <p class="hint">Big-Five scores on the file’s normalised scale.</p>
-          <form id="form-sds" class="sliders"></form>
-        </div>
-        <div class="panel result">
-          <div class="hero-prob"><span id="sds-prob">–</span><small>chance of high overall success</small></div>
-          <div id="sds-contrib" class="chart chart-short"></div>
-          <p class="hint" id="sds-note"></p>
-        </div>
-      </div>
-
-      <div class="try-grid">
-        <form class="panel" id="form-band">
-          <h3>Salary band for a job posting</h3>
-          <div class="field-row">
-            <label>Min experience (years) <input type="number" name="exp_min" min="0" max="40" value="3"></label>
-            <label>Max experience (years) <input type="number" name="exp_max" min="0" max="45" value="6"></label>
+    <!-- =================================================== CHECK MY FIT -->
+    <section class="page" id="page-fit">
+      <div class="hero">
+        <div class="hero-inner">
+          <div class="hero-copy">
+            <h1>Which data job are you ready for?</h1>
+            <p class="hero-lede">Upload your resume. In a few seconds you'll see how well you match 19 data and tech roles,
+              which skills you're missing, and what each role pays, based on 15,841 real job postings.</p>
+            <ul class="hero-points">
+              <li><strong>19 roles</strong> from Data Analyst to ML Engineer</li>
+              <li><strong>Pay in ₹ LPA</strong> from real postings</li>
+              <li><strong>Private</strong>: your file is read once and never stored</li>
+            </ul>
           </div>
-          <label>Job title <input type="text" name="job_title" value="Data Scientist" autocomplete="off"></label>
-          <label>City <select name="city" id="band-city"></select></label>
-          <label>Skills <input type="text" id="skill-input" list="skill-list" placeholder="Type a skill and press Enter" autocomplete="off"></label>
-          <datalist id="skill-list"></datalist>
-          <ul class="chips" id="skill-chips" aria-label="Selected skills"></ul>
-          <button type="submit" class="primary">Estimate salary band</button>
-        </form>
-        <div class="panel result">
-          <div class="hero-prob"><span id="band-pred">–</span><small>most likely band, lakhs per year</small></div>
-          <div id="band-chart" class="chart chart-short"></div>
-          <p class="hint" id="band-note"></p>
-        </div>
-      </div>
-    </section>
 
-    <!-- ======================================================= RESUME -->
-    <section class="page" id="page-resume" hidden>
-      <h2>Match your resume to the job profiles</h2>
-      <p class="lede">Upload a resume to see which roles your skills match, what to add for them, and a likely salary band.
-        The file is processed in memory and never stored.</p>
-      <form class="panel upload" id="form-resume">
-        <label class="drop" id="drop">
-          <input type="file" id="resume-file" name="file" accept=".pdf,.docx,.txt" required>
-          <span class="drop-title" id="drop-title">Choose a resume or drop it here</span>
-          <span class="hint">PDF, Word (.docx) or text, up to 5 MB</span>
-        </label>
-        <div class="upload-side">
-          <label>City for the salary estimate <select name="city" id="resume-city"></select></label>
-          <button type="submit" class="primary" id="resume-go">Analyse resume</button>
-        </div>
-      </form>
-
-      <div id="resume-results" hidden>
-        <div class="distance-strip resume-strip" id="resume-summary"></div>
-        <div class="panel">
-          <h3>Skills found</h3>
-          <p class="hint" id="resume-skill-note"></p>
-          <ul class="chips static" id="resume-skills"></ul>
-        </div>
-        <div class="two-col">
-          <figure class="panel"><h3>How closely your skills match each role</h3>
-            <p class="hint">Cosine similarity between your skills and the skills each role’s postings ask for (same scale as the Atlas skill view, 1 = identical mix).</p>
-            <div id="resume-roles" class="chart chart-heat"></div></figure>
-          <div class="panel">
-            <h3>Best-fitting data roles</h3>
-            <div id="resume-top"></div>
-            <h3 style="margin-top:22px">Estimated salary band</h3>
-            <div class="field-row">
-              <label>Years of experience <input type="number" id="resume-years" min="0" max="45" step="0.5"></label>
-              <label>As a <select id="resume-title"></select></label>
+          <div class="intake card" id="intake">
+            <div class="intake-tabs" role="tablist" aria-label="How to share your skills">
+              <button role="tab" id="tab-upload" aria-selected="true" aria-controls="panel-upload">Upload resume</button>
+              <button role="tab" id="tab-pick" aria-selected="false" aria-controls="panel-pick">Pick my skills</button>
             </div>
-            <div class="hero-prob" style="margin-top:12px"><span id="resume-band">–</span><small>most likely band, lakhs per year</small></div>
-            <div id="resume-band-chart" class="chart chart-short"></div>
-            <p class="hint" id="resume-years-note"></p>
+
+            <form id="panel-upload" role="tabpanel" aria-labelledby="tab-upload" class="intake-panel">
+              <label class="drop" id="drop">
+                <input type="file" id="resume-file" accept=".pdf,.docx,.txt">
+                <span class="drop-icon" aria-hidden="true"></span>
+                <span class="drop-title" id="drop-title">Drop your resume here or browse</span>
+                <span class="drop-hint">PDF, Word (.docx) or text, up to 5 MB</span>
+              </label>
+              <div class="intake-row">
+                <label class="field">City you're looking in <select id="fit-city"></select></label>
+                <button type="submit" class="btn primary" id="fit-go">Check my fit</button>
+              </div>
+              <p class="intake-alt">No resume handy? <button type="button" class="linkish" id="fit-sample">Try a sample resume</button></p>
+            </form>
+
+            <form id="panel-pick" role="tabpanel" aria-labelledby="tab-pick" class="intake-panel" hidden>
+              <p class="pick-hint">Tap the skills you have. You can add others below.</p>
+              <div id="picker" class="picker"></div>
+              <div class="intake-row">
+                <label class="field">Add another skill <input type="text" id="pick-extra" list="skill-list" placeholder="e.g. pandas" autocomplete="off"></label>
+                <label class="field narrow">Years of experience <input type="number" id="pick-years" min="0" max="45" step="0.5" value="1"></label>
+              </div>
+              <div class="intake-row">
+                <label class="field">City <select id="pick-city"></select></label>
+                <button type="submit" class="btn primary" id="pick-go">Check my fit</button>
+              </div>
+            </form>
+            <datalist id="skill-list"></datalist>
+            <p class="intake-error" id="fit-error" role="alert" hidden></p>
           </div>
+        </div>
+      </div>
+
+      <div class="wrap">
+        <ol class="how" id="how" aria-label="How it works">
+          <li><span class="how-n">1</span><div><h3>Share your skills</h3><p>Upload a resume or tick the skills you have.</p></div></li>
+          <li><span class="how-n">2</span><div><h3>We compare</h3><p>Your skills and experience are checked against what employers ask for in each role.</p></div></li>
+          <li><span class="how-n">3</span><div><h3>See where you fit</h3><p>Every role gets a clear verdict, the skills you're missing, and a pay estimate.</p></div></li>
+        </ol>
+
+        <div id="results" hidden>
+          <section class="profile card" aria-labelledby="profile-h">
+            <div class="profile-head">
+              <div>
+                <h2 id="profile-h">Your profile</h2>
+                <p class="muted" id="profile-sub"></p>
+              </div>
+              <div class="tally" id="tally"></div>
+            </div>
+            <ul class="chips" id="my-skills" aria-label="Your skills"></ul>
+            <div class="profile-edit">
+              <label class="field">Missing a skill? Add it <input type="text" id="add-skill" list="skill-list" placeholder="Type and press Enter" autocomplete="off"></label>
+              <label class="field narrow">Years of experience <input type="number" id="my-years" min="0" max="45" step="0.5"></label>
+              <button type="button" class="btn secondary" id="recheck">Update results</button>
+            </div>
+          </section>
+
+          <h2 class="section-h">Your best matches</h2>
+          <div class="matches" id="top-matches"></div>
+
+          <section class="card" aria-labelledby="all-h">
+            <div class="list-head">
+              <h2 id="all-h">All 19 roles</h2>
+              <div class="segmented small" id="role-filter" role="radiogroup" aria-label="Which roles">
+                <button type="button" role="radio" aria-checked="true" data-f="all">All roles</button>
+                <button type="button" role="radio" aria-checked="false" data-f="data">Data roles only</button>
+              </div>
+            </div>
+            <div id="all-roles" class="role-rows"></div>
+            <p class="muted small-print" id="method-note"></p>
+          </section>
         </div>
       </div>
     </section>
 
-    <!-- ========================================================= DATA -->
-    <section class="page" id="page-data" hidden>
-      <h2>Data and cleaning decisions</h2>
-      <p class="lede">Nothing was dropped silently. Every decision made in phase 1 is listed here.</p>
-      <div class="panel"><h3>Dataset audit</h3><div id="audit"></div></div>
-      <div class="panel"><h3>Decision log</h3><div id="decisions"></div></div>
-      <div class="panel"><h3>How postings were mapped to roles</h3><div id="coverage"></div></div>
+    <!-- =================================================== EXPLORE ROLES -->
+    <section class="page" id="page-explore" hidden>
+      <div class="wrap">
+        <header class="page-head">
+          <h1>Explore roles</h1>
+          <p class="lede">Pick a role to see what employers ask for, what it pays, and which roles are closest to it.</p>
+        </header>
+        <div id="role-grid" class="role-grid"></div>
+
+        <article id="role-detail" class="role-detail" aria-live="polite">
+          <div id="role-head"></div>
+
+        <section class="card orbit-card" aria-labelledby="orbit-h">
+          <div class="orbit-head">
+            <div>
+              <h2 id="orbit-h">Roles closest to <span id="orbit-role"></span></h2>
+              <p class="muted">The closer a role sits to the centre, the more alike the two jobs are. Click any role to move it to the middle.</p>
+            </div>
+            <div class="segmented small" id="orbit-view" role="radiogroup" aria-label="Compare roles by"></div>
+          </div>
+          <div class="orbit-layout">
+            <div class="orbit-wrap"><svg id="orbit" viewBox="0 0 680 680" role="img" aria-label="Similar roles chart"></svg></div>
+            <ol class="near-list" id="near-list"></ol>
+          </div>
+        </section>
+
+          <div id="role-body"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- =================================================== COMPARE -->
+    <section class="page" id="page-compare" hidden>
+      <div class="wrap">
+        <header class="page-head">
+          <h1>Compare two roles</h1>
+          <p class="lede">Thinking of switching? See what the two jobs share and what you'd need to learn.</p>
+        </header>
+        <div class="pickers card">
+          <label class="field">First role <select id="cmp-a"></select></label>
+          <button type="button" class="btn ghost" id="cmp-swap" aria-label="Swap the two roles">⇄</button>
+          <label class="field">Second role <select id="cmp-b"></select></label>
+        </div>
+        <div id="cmp-summary" class="cmp-summary"></div>
+        <div id="cmp-skills" class="cmp-skills"></div>
+        <div class="two-col">
+          <figure class="card"><h3>Skill areas employers ask for</h3>
+            <p class="muted">Share of job postings mentioning each area.</p>
+            <div id="cmp-fam" class="chart"></div></figure>
+          <figure class="card"><h3>Pay offered</h3>
+            <p class="muted">Share of postings in each pay range (₹ lakhs per year).</p>
+            <div id="cmp-band" class="chart"></div></figure>
+        </div>
+        <details class="card details">
+          <summary>Statistical tests (for analysts)</summary>
+          <div id="cmp-tests"></div>
+        </details>
+      </div>
+    </section>
+
+    <!-- =================================================== INSIGHTS -->
+    <section class="page" id="page-insights" hidden>
+      <div class="wrap">
+        <header class="page-head">
+          <h1>What the data says</h1>
+          <p class="lede">Eight findings from 15,841 job postings and two company datasets, written straight from the results.</p>
+        </header>
+        <ol class="findings" id="findings"></ol>
+        <div class="two-col">
+          <figure class="card"><h3>Which skills pay more?</h3>
+            <p class="muted">How much higher the pay range is when a posting asks for each skill area.</p>
+            <div id="ins-premium" class="chart"></div></figure>
+          <figure class="card"><h3>Experience and pay</h3>
+            <p class="muted">Average years of experience asked for in each pay range.</p>
+            <div id="ins-exp" class="chart"></div></figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================== FOR ANALYSTS -->
+    <section class="page" id="page-research" hidden>
+      <div class="wrap">
+        <header class="page-head">
+          <h1>For analysts</h1>
+          <p class="lede">Methods, statistical tests and models behind the site, for the hackathon jury and anyone who wants the detail.</p>
+        </header>
+        <div class="segmented" id="research-tabs" role="tablist" aria-label="Analyst sections">
+          <button type="button" role="tab" data-sub="stats" aria-selected="true">Statistics</button>
+          <button type="button" role="tab" data-sub="models" aria-selected="false">Models</button>
+          <button type="button" role="tab" data-sub="playground" aria-selected="false">Model playground</button>
+          <button type="button" role="tab" data-sub="distances" aria-selected="false">Role distances</button>
+          <button type="button" role="tab" data-sub="data" aria-selected="false">Data &amp; cleaning</button>
+        </div>
+
+        <!-- Statistics -->
+        <div class="sub" id="sub-stats">
+          <p class="lede">High vs low groups compared feature by feature. Effect size is Cohen’s d with a 95% interval;
+            filled dots stay significant after Holm correction.</p>
+          <div class="two-col">
+            <figure class="card"><h3>Junior skills and salary hike</h3><div id="st-jds" class="chart"></div></figure>
+            <figure class="card"><h3>Senior personality and success</h3><div id="st-sds" class="chart"></div></figure>
+          </div>
+          <div class="two-col">
+            <figure class="card"><h3>Pay premium by competency</h3>
+              <p class="muted">Average salary-band difference between postings with and without the competency.</p>
+              <div id="st-fam" class="chart"></div></figure>
+            <figure class="card"><h3>Experience by salary band</h3>
+              <p class="muted">Mean minimum experience asked for in each band.</p>
+              <div id="st-exp" class="chart"></div></figure>
+          </div>
+          <div class="two-col">
+            <figure class="card"><h3>Big-data premium by experience level</h3>
+              <p class="muted">The premium is large for juniors and disappears for experienced hires.</p>
+              <div id="st-bigdata" class="chart"></div></figure>
+            <figure class="card"><h3>Company reward vs market premium</h3>
+              <p class="muted" id="st-align-note"></p>
+              <div id="st-align" class="chart"></div></figure>
+          </div>
+          <figure class="card"><h3>Skills with the largest pay difference</h3>
+            <p class="muted">Skills listed in at least 150 postings; band difference with vs without the skill.</p>
+            <div id="st-skills" class="chart chart-tall"></div></figure>
+        </div>
+
+        <!-- Models -->
+        <div class="sub" id="sub-models" hidden>
+          <p class="lede">Each model was compared against a baseline that always guesses the most common answer.
+            Small samples use 5-fold cross-validation repeated 10 times.</p>
+          <div class="two-col">
+            <div class="card"><h3>Salary hike from junior skills</h3><div id="md-jds-table"></div></div>
+            <div class="card"><h3>Success from senior personality</h3><div id="md-sds-table"></div></div>
+          </div>
+          <div class="two-col">
+            <figure class="card"><h3>ROC curves (out-of-fold)</h3>
+              <p class="muted">Closer to the top-left corner is better. The diagonal is guessing.</p>
+              <div id="md-roc" class="chart"></div></figure>
+            <figure class="card"><h3>What each score does to the odds</h3>
+              <p class="muted">Standardised logistic coefficients with bootstrap 95% intervals.</p>
+              <div id="md-coef" class="chart"></div></figure>
+          </div>
+          <div class="two-col">
+            <div class="card"><h3>Salary band from a job posting</h3><div id="md-band-table"></div></div>
+            <figure class="card"><h3>Test-set confusion matrix</h3>
+              <p class="muted">Rows are the true band, columns the predicted band.</p>
+              <div id="md-cm" class="chart"></div></figure>
+          </div>
+          <figure class="card"><h3>Words and skills that move the band</h3>
+            <div class="segmented small" id="md-term-switch" role="radiogroup" aria-label="Term type"></div>
+            <div id="md-terms" class="chart chart-tall"></div></figure>
+        </div>
+
+        <!-- Playground -->
+        <div class="sub" id="sub-playground" hidden>
+          <div class="two-col">
+            <div class="card">
+              <h3>Junior data scientist</h3>
+              <p class="muted">Set the five skill scores (1–5) from the company's JDS file.</p>
+              <form id="form-jds" class="sliders"></form>
+            </div>
+            <div class="card result">
+              <div class="hero-prob"><span id="jds-prob">–</span><small>chance of a high salary hike</small></div>
+              <div id="jds-contrib" class="chart chart-short"></div>
+              <p class="muted" id="jds-note"></p>
+            </div>
+          </div>
+          <figure class="card">
+            <h3>Roles that fit this skill pattern</h3>
+            <p class="muted" id="match-note">Pattern match compares relative strengths with what each role emphasises; coverage is how much of the role’s demand the levels meet.</p>
+            <div id="match-chart" class="chart"></div>
+            <div id="match-gaps"></div>
+          </figure>
+          <div class="two-col">
+            <div class="card">
+              <h3>Senior data scientist</h3>
+              <p class="muted">Big-Five scores on the SDS file’s normalised scale.</p>
+              <form id="form-sds" class="sliders"></form>
+            </div>
+            <div class="card result">
+              <div class="hero-prob"><span id="sds-prob">–</span><small>chance of high overall success</small></div>
+              <div id="sds-contrib" class="chart chart-short"></div>
+              <p class="muted" id="sds-note"></p>
+            </div>
+          </div>
+          <div class="two-col">
+            <form class="card stack" id="form-band">
+              <h3>Salary band for a job posting</h3>
+              <div class="field-row">
+                <label class="field">Min experience (years) <input type="number" name="exp_min" min="0" max="40" value="3"></label>
+                <label class="field">Max experience (years) <input type="number" name="exp_max" min="0" max="45" value="6"></label>
+              </div>
+              <label class="field">Job title <input type="text" name="job_title" value="Data Scientist" autocomplete="off"></label>
+              <label class="field">City <select name="city" id="band-city"></select></label>
+              <label class="field">Skills <input type="text" id="skill-input" list="skill-list" placeholder="Type a skill and press Enter" autocomplete="off"></label>
+              <ul class="chips" id="skill-chips" aria-label="Selected skills"></ul>
+              <button type="submit" class="btn primary">Estimate salary band</button>
+            </form>
+            <div class="card result">
+              <div class="hero-prob"><span id="band-pred">–</span><small>most likely pay range</small></div>
+              <div id="band-chart" class="chart chart-short"></div>
+              <p class="muted" id="band-note"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Role distances -->
+        <div class="sub" id="sub-distances" hidden>
+          <p class="lede">The full distance tables behind the Explore page. Five definitions of “alike”.</p>
+          <div class="segmented small" id="view-switch" role="radiogroup" aria-label="Distance view"></div>
+          <p class="muted" id="view-note"></p>
+          <div class="two-col">
+            <figure class="card">
+              <h3>Distance between every pair of roles</h3>
+              <p class="muted">Darker means closer. Select a square to compare those two roles.</p>
+              <div id="atlas-heatmap" class="chart chart-heat"></div>
+            </figure>
+            <figure class="card">
+              <h3>Family tree of roles</h3>
+              <p class="muted">Roles that join lower down are more alike. Colours mark five clusters.</p>
+              <div id="atlas-dendro" class="chart chart-heat"></div>
+            </figure>
+          </div>
+        </div>
+
+        <!-- Data -->
+        <div class="sub" id="sub-data" hidden>
+          <p class="lede">Nothing was dropped silently. Every decision made while cleaning the data is listed here.</p>
+          <div class="card"><h3>Dataset audit</h3><div id="audit"></div></div>
+          <div class="card"><h3>Decision log</h3><div id="decisions"></div></div>
+          <div class="card"><h3>How postings were mapped to roles</h3><div id="coverage"></div></div>
+        </div>
+      </div>
     </section>
   </main>
 
   <footer class="foot">
-    <p>Kaushal Setu. Built on the SAS CU Hackathon datasets. API documentation is at <a href="/docs">/docs</a>.</p>
+    <div class="wrap foot-inner">
+      <p><strong>Kaushal Setu</strong>. Bridging skills to opportunities. Built on the SAS CU Hackathon datasets.</p>
+      <p class="muted">Results are estimates from job-posting data, not a hiring decision. <a href="/docs">API documentation</a></p>
+    </div>
   </footer>
 
   <script type="module" src="js/app.js"></script>

@@ -24,7 +24,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend import services
 from backend.resume import MAX_BYTES, ResumeError
-from backend.schemas import JobPosting, PersonalityScores, SkillScores
+from backend.schemas import JobPosting, PersonalityScores, SkillProfile, SkillScores
 
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 log = logging.getLogger("uvicorn.error")
@@ -145,6 +145,24 @@ def predict_band(body: JobPosting):
 def match(body: SkillScores):
     """Rank job profiles by how well your skill strengths fit what each role asks for."""
     return services.match_roles(body.model_dump())
+
+
+@app.post("/api/fit", tags=["resume"])
+def fit(body: SkillProfile):
+    """No resume? Send your skills and years of experience; get your fit for every role."""
+    return services.assess_fit(body.skills, body.years, body.city)
+
+
+@app.get("/api/fit/sample", tags=["resume"])
+def fit_sample(city: str = "bengaluru"):
+    """The fit result for the bundled sample resume (for demos)."""
+    return services.sample_resume(city)
+
+
+@app.get("/api/skill-picker", tags=["resume"])
+def skill_picker():
+    """Popular skills grouped into areas, for the 'pick your skills' form."""
+    return services.skill_picker()
 
 
 @app.post("/api/resume", tags=["resume"])
