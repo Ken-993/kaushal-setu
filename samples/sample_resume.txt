@@ -1,0 +1,24 @@
+SAMPLE CANDIDATE
+Data Analyst | sample.candidate@example.com | Pune
+
+SUMMARY
+Data analyst with 3 years of experience turning messy business data into dashboards and forecasts.
+Comfortable with Python, SQL and Power-BI; currently learning machine learning with scikit-learn.
+
+EXPERIENCE
+Data Analyst, Example Retail Pvt Ltd                                   2022 - Present
+- Built Power BI and Tableau dashboards used by 40 store managers for weekly sales reporting.
+- Wrote SQL queries on PostgreSQL to clean and join 12 source tables.
+- Forecasting of weekly demand using regression and time series models in Python (pandas, NumPy).
+- Ran A/B testing analysis for two marketing campaigns; presented results to leadership.
+
+Junior Analyst Intern, Example Consulting                              2021 - 2022
+- Data cleaning and data visualization in Excel and R.
+- Automated reports with VBA macros.
+
+EDUCATION
+B.Sc. Statistics, Example University                                   2018 - 2021
+
+SKILLS
+Python, SQL, R, Excel, Power BI, Tableau, Statistics, Regression, Forecasting,
+Data Analysis, Data Visualization, Machine Learning (basic), Git, Communication

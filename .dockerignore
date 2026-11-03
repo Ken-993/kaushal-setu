@@ -1,0 +1,13 @@
+# Things Docker should NOT copy into the image (smaller, faster builds)
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.vscode
+artifacts
+data/clean
+*.zip
+*.md
+!README.md

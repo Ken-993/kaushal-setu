@@ -1,0 +1,11 @@
+# Render Blueprint: tells Render how to run this repo (used by "New > Blueprint").
+services:
+  - type: web
+    name: kaushal-setu
+    runtime: docker            # build the Dockerfile in this repo
+    plan: free                 # 512 MB RAM, 0.1 CPU, sleeps after 15 idle minutes
+    region: singapore          # closest Render region to India (cannot be changed later)
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit  # every git push to the main branch re-deploys the site
